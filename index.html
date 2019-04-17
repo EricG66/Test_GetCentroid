@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no" />
+    <title>Simple Map</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.27/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.27/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #mapDiv {
+            flex-grow: 2;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <script src="https://js.arcgis.com/3.27/"></script>
+    <script>
+        var map;
+        require(["esri/map",
+            "dojo/on", "dojo/Deferred",
+            "dojo/_base/lang", "esri/dijit/Popup",
+            "esri/graphic", "esri/toolbars/draw",
+            "esri/layers/FeatureLayer", "esri/tasks/query",
+            "esri/tasks/GeometryService",
+            "esri/geometry/geometryEngine", "esri/layers/GraphicsLayer",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/SimpleFillSymbol", "esri/symbols/TextSymbol",
+            "esri/Color", "esri/geometry/Point", "esri/geometry/Multipoint",
+            "esri/symbols/Font",
+            "dojo/domReady!"
+        ], function(Map,
+            on, Deferred,
+            lang, Popup,
+            Graphic, Draw,
+            FeatureLayer, Query,
+            GeometryService,
+            geometryEngine, GraphicsLayer,
+            SimpleMarkerSymbol,
+            SimpleFillSymbol,
+            TextSymbol,
+            Color, Point, Multipoint,
+            Font) {
+            map = new Map("mapDiv", {
+                basemap: "topo", //For full list of pre-defined basemaps, navigate to http://arcg.is/1JVo6Wd
+                center: [-80.725874, 43.142926], // longitude, latitude
+                zoom: 18
+            });
+            const layer = new FeatureLayer("https://services.arcgis.com/zmLUiqh7X11gGV2d/arcgis/rest/services/Woodstock/FeatureServer/2");
+            map.addLayer(layer);
+            const CENTROID_SYMBOL = new SimpleMarkerSymbol({
+                name: "newAddress",
+                color: [255, 30, 30, 0],
+                size: 5,
+                type: "esriSMS",
+                style: "esriSMSCircle",
+                outline: {
+                    color: [255, 30, 30, 255],
+                    width: 1,
+                    type: "esriSLS",
+                    style: "esriSLSSolid"
+                }
+            })
+            const CENTROID_SYMBOL_2 = new SimpleMarkerSymbol({
+                name: "newAddress",
+                color: [255, 30, 30, 0],
+                size: 7,
+                type: "esriSMS",
+                style: "esriSMSCircle",
+                outline: {
+                    color: [255, 30, 30, 255],
+                    width: 1,
+                    type: "esriSLS",
+                    style: "esriSLSSolid"
+                }
+            })
+            const EXTENT_CENTRE_SYMBOL = new SimpleMarkerSymbol({
+                name: "newAddress",
+                color: [255, 30, 30, 0],
+                size: 5,
+                type: "esriSMS",
+                style: "esriSMSSquare",
+                outline: {
+                    color: [0, 0, 0, 255],
+                    width: 1,
+                    type: "esriSLS",
+                    style: "esriSLSSolid"
+                }
+            })
+            const PARCEL_SYMBOL = new SimpleFillSymbol({
+                name: "selectedParcel",
+                color: [255, 30, 30, 255],
+                style: "esriSFSNull",
+                outline: {
+                    color: [255, 30, 30, 255],
+                    width: 1,
+                    type: "esriSLS",
+                    style: "esriSLSSolid"
+                }
+            });
+            const EXTENT_SYMBOL = new SimpleFillSymbol({
+                name: "selectedParcel",
+                color: [255, 30, 30, 255],
+                style: "esriSFSNull",
+                outline: {
+                    color: [0, 0, 0, 127],
+                    width: 1,
+                    type: "esriSLS",
+                    style: "esriSLSSolid"
+                }
+            });
+            _onGetCentroid = function(event) {
+                const draw = new Draw(this.map);
+                map.setInfoWindowOnClick(false);
+                map.infoWindow.hide();
+                let drawDrawEnd = draw.on("draw-complete", lang.hitch(this, addToMap));
+                draw.activate(Draw.POINT);
+                function addToMap(event) {
+                    draw.deactivate();
+                    drawDrawEnd.remove();
+                    const q = new Query();
+                    q.outFields = ["OBJECTID"];
+                    q.where = "1=1";
+                    q.geometry = event.geometry;
+                    q.spatialRelationship = "esriSpatialRelIntersects";
+                    q.returnGeometry = true;
+                    layer.selectFeatures(
+                        q, FeatureLayer.SELECTION_NEW,
+                        ([parcel]) => {
+                            console.log("parcel", parcel);
+                            if (parcel) {
+                                map.graphics.add(new Graphic(parcel.geometry, PARCEL_SYMBOL));
+                                const centroid = parcel.geometry.getCentroid();
+                                map.graphics.add(new Graphic(centroid, CENTROID_SYMBOL));
+                            }
+                        }
+                    )
+                }
+            };
+            _onExtentCentre = function(event) {
+                const draw = new Draw(this.map);
+                map.setInfoWindowOnClick(false);
+                map.infoWindow.hide();
+                let drawDrawEnd = draw.on("draw-complete", lang.hitch(this, addToMap));
+                draw.activate(Draw.POINT);
+                function addToMap(event) {
+                    draw.deactivate();
+                    drawDrawEnd.remove();
+                    const q = new Query();
+                    q.outFields = ["OBJECTID"];
+                    q.where = "1=1";
+                    q.geometry = event.geometry;
+                    q.spatialRelationship = "esriSpatialRelIntersects";
+                    q.returnGeometry = true;
+                    layer.selectFeatures(
+                        q, FeatureLayer.SELECTION_NEW,
+                        ([parcel]) => {
+                            console.log("parcel", parcel);
+                            if (parcel) {
+                                const extent = parcel.geometry.getExtent();
+                                map.graphics.add(new Graphic(extent, EXTENT_SYMBOL));
+                                const centroid = extent.getCenter();
+                                map.graphics.add(new Graphic(centroid, EXTENT_CENTRE_SYMBOL));
+                            }
+                        }
+                    )
+                }
+            }
+            _onCalculateCentre = function(event) {
+                const draw = new Draw(this.map);
+                map.setInfoWindowOnClick(false);
+                map.infoWindow.hide();
+                let drawDrawEnd = draw.on("draw-complete", lang.hitch(this, selectAddressRange));
+                draw.activate(Draw.FREEHAND_POLYLINE);
+                function selectAddressRange(evt) {
+                    draw.deactivate();
+                    drawDrawEnd.remove();
+                    // const buffer = geometryEngine.buffer(evt.geometry, 5, GeometryService.UNIT_METER);
+                    const q = new Query();
+                    q.outFields = ["OBJECTID"];
+                    q.where = "1=1";
+                    q.geometry = evt.geometry;
+                    q.spatialRelationship = "esriSpatialRelCrosses";
+                    q.returnGeometry = true;
+                    layer.selectFeatures(
+                        q, FeatureLayer.SELECTION_NEW,
+                        parcels => {
+                            parcels.forEach(parcel => {
+                                const CentroidPoint = function(geometry) {
+                                    // console.log("geometry", geometry, this.map);
+                                    const [r] = geometry.rings;
+                                    let xm = 0;
+                                    let ym = 0;
+                                    let n = 0;
+                                    for (let i = 1; i < r.length; i++) {
+                                        const [x, y] = r[i];
+                                        xm += x;
+                                        ym += y;
+                                        n++
+                                    }
+                                    return new Point(xm / n, ym / n, this.map.spatialReference);
+                                }
+                                console.log("parcel", parcel);
+                                if (parcel) {
+                                    map.graphics.add(new Graphic(parcel.geometry, PARCEL_SYMBOL));
+                                    const centroid = CentroidPoint(parcel.geometry);
+                                    map.graphics.add(new Graphic(centroid, CENTROID_SYMBOL));
+                                }
+                            })
+                        }
+                    )
+                }
+            }
+            _onCalculateTrueCentre = function(event) {
+                const draw = new Draw(this.map);
+                map.setInfoWindowOnClick(false);
+                map.infoWindow.hide();
+                let drawDrawEnd = draw.on("draw-complete", lang.hitch(this, selectAddressRange));
+                draw.activate(Draw.FREEHAND_POLYLINE);
+                const CentroidPoint = function(geometry) {
+                    const [r] = geometry.rings;
+                    const [x0, y0] = r[0]; //[0, 0]; //[-8986569.0867, 5333841.9316]; //;
+                    console.log("[x0, y0]", [x0, y0]);
+                    let sX = 0;
+                    let sY = 0;
+                    let sA = 0;
+                    for (let i = 1; i < r.length; i++) {
+                        let [x, y] = r[i];
+                        let [x_1, y_1] = r[i - 1];
+                        x = x - x0;
+                        y = y - y0;
+                        x_1 = x_1 - x0;
+                        y_1 = y_1 - y0;
+                        const h = x - x_1;
+                        const a = y;
+                        const b = y_1;
+                        const ai = h * (a + b) / 2.0;
+                        const xi = ((b + 2 * a) / (3 * (a + b))) * h;
+                        const yi = (((b + 2 * a) / (3 * (a + b))) * (a - b) + b) / 2.0;
+                        sX += xi * ai;
+                        sY += yi * ai;
+                        sA += ai;
+                    }
+                    const x = x0 + sX / sA;
+                    const y = y0 + sY / sA;
+                    console.log("sX , sY, sA", sX, sY, sA);
+                    console.log("x , y", x, y);
+                    return [x, y];
+                }
+                function selectAddressRange(evt) {
+                    draw.deactivate();
+                    drawDrawEnd.remove();
+                    // const buffer = geometryEngine.buffer(evt.geometry, 5, GeometryService.UNIT_METER);
+                    const q = new Query();
+                    q.outFields = ["OBJECTID"];
+                    q.where = "1=1";
+                    q.geometry = evt.geometry;
+                    q.spatialRelationship = "esriSpatialRelCrosses";
+                    q.returnGeometry = true;
+                    layer.selectFeatures(
+                        q, FeatureLayer.SELECTION_NEW,
+                        parcels => {
+                            parcels.forEach(parcel => {
+                                console.log("parcel", parcel);
+                                if (parcel) {
+                                    map.graphics.add(new Graphic(parcel.geometry, PARCEL_SYMBOL));
+                                    const centroid = CentroidPoint(parcel.geometry);
+                                    map.graphics.add(new Graphic(new Point(centroid, this.map.spatialReference), CENTROID_SYMBOL_2));
+                                }
+                            })
+                        }
+                    )
+                }
+            }
+            _onClearGraphics = function(event) {
+                map.graphics.clear();
+            }
+        });
+    </script>
+</head>
+
+<body>
+    <div style="height:100%; display: flex; flex-direction: column;">
+        <div style="min-height:10px; flex-grow: 1; padding:8px;">
+            <input type="button" value="Get Centroid" onclick="_onGetCentroid(event);">
+            <input type="button" value="Get Centre of Extent" onclick="_onExtentCentre(event);">
+            <input type="button" value="Brute Force" onclick="_onCalculateCentre(event);">
+            <input type="button" value="True Brute Force" onclick="_onCalculateTrueCentre(event);">
+            <input type="button" value="Clear Graphics" onclick="_onClearGraphics(event);">
+        </div>
+        <div id="mapDiv"></div>
+    </div>
+</body>
+
+</html>
